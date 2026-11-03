@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ApexLogix Enterprise</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="./js/index.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      * { border-radius: 0 !important; box-shadow: none !important; }
+      body { 
+        background-color: #f4f4f4; color: #000; font-family: Arial, sans-serif; font-size: 0.9rem; 
+        margin: 0; height: 100vh; overflow: hidden; /* Locks body scrolling */
+      }
+      .app-layout { display: flex; height: 100vh; }
+      .sidebar { 
+        width: 220px; background: #e9ecef; border-right: 1px solid #ccc; 
+        flex-shrink: 0; height: 100vh; overflow-y: auto; /* Independent sidebar scroll */
+      }
+      .main-content { 
+        flex-grow: 1; padding: 15px; height: 100vh; overflow-y: auto; /* Independent content scroll */
+      }
+      .nav-tab-btn { width: 100%; text-align: left; padding: 8px 12px; border: 1px solid transparent; background: transparent; color: #333; margin-bottom: 2px; cursor: pointer; }
+      .nav-tab-btn:hover { background-color: #dee2e6; }
+      .nav-tab-btn.active { background-color: #fff; border: 1px solid #ccc; border-right: none; font-weight: bold; margin-right: -1px; position: relative; z-index: 1; }
+      .box { background: #fff; border: 1px solid #ccc; padding: 12px; margin-bottom: 15px; }
+      .table th { background-color: #e9ecef; border-bottom: 2px solid #ccc; font-size: 0.85rem; }
+      .form-control, .form-select, .btn { border: 1px solid #aaa; padding: 4px 8px; font-size: 0.9rem; }
+      .btn { background: #e9ecef; color: #000; }
+      .btn:hover { background: #d6d8db; }
+      .btn-dark { background: #333; color: #fff; border-color: #333; }
+      .btn-dark:hover { background: #111; }
+      h4 { font-size: 1.25rem; }
+      .clickable { cursor: pointer; transition: 0.2s; }
+      .clickable:hover { transform: translateY(-2px); }
+    </style>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar p-2 d-flex flex-column">
+        <div class="mb-3 px-2 mt-2">
+          <h5 class="fw-bold m-0 text-uppercase">ApexLogix</h5>
+        </div>
+        <nav class="nav flex-column gap-1" id="nav-container">
+          <button class="nav-tab-btn active" id="nav-home">Home Dashboard</button>
+          
+          <div class="text-muted fw-bold mt-3 mb-1 ms-2" style="font-size: 0.75rem;">WAREHOUSE INVENTORY</div>
+          <button class="nav-tab-btn" id="nav-products">Product Master</button>
+          <button class="nav-tab-btn" id="nav-po">Purchase Orders</button>
+          <button class="nav-tab-btn" id="nav-transfers">Stock Releases & Returns</button>
+          <button class="nav-tab-btn" id="nav-stores">Store Outlets</button>
+          <button class="nav-tab-btn" id="nav-categories">Categories</button>
+          <button class="nav-tab-btn" id="nav-suppliers">Supplier Section</button>
+          <button class="nav-tab-btn" id="nav-logs">Audit Logs</button>
+
+          <div class="text-muted fw-bold mt-3 mb-1 ms-2" style="font-size: 0.75rem;">KULAS STORE</div>
+          <button class="nav-tab-btn" id="nav-pos">Terminal</button>
+          <button class="nav-tab-btn" id="nav-ar">Account Receivable</button>
+          <button class="nav-tab-btn" id="nav-history">Sales Analytics</button>
+
+          <div class="text-muted fw-bold mt-3 mb-1 ms-2" style="font-size: 0.75rem;">SYSTEM</div>
+          <button class="nav-tab-btn" id="nav-counts">Cycle Count Sheet</button>
+          <button class="nav-tab-btn" id="nav-archive">System Archive</button>
+          <button class="nav-tab-btn" id="nav-reports">Inventory & Shrinkage</button>
+        </nav>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="main-content">
+        <!-- STORE OUTLETS MANAGEMENT SECTION -->
+        <div id="section-stores" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Store Outlets Management</h4>
+          <div class="box p-3">
+            <h6 class="fw-bold mb-3 text-uppercase"><i class="fas fa-store me-2"></i>Register New Store Outlet</h6>
+            <div class="row g-3 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label mb-1 fw-bold">Store Code <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="store-code" placeholder="e.g. STR-102" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1 fw-bold">Store Outlet Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="store-name" placeholder="e.g. Uptown Retail Branch" />
+              </div>
+              <div class="col-md-3">
+                <button type="button" class="btn btn-dark w-100 fw-bold py-2" id="btn-save-store">
+                  <i class="fas fa-plus me-1"></i> Add Store Outlet
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <h5 class="mt-4 fw-bold text-uppercase">Registered Store Outlets</h5>
+          <div class="box p-0" id="stores-table-div">
+            <div class="p-3 text-muted">Loading store outlets...</div>
+          </div>
+        </div>
+        
+        <!-- Cycle Count Workspace Section -->
+        <div id="section-counts" class="tab-section" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
+            <h4 class="fw-bold m-0 text-uppercase">Blind Cycle Count Session</h4>
+            <button class="btn btn-dark fw-bold" id="btn-start-count">+ Start New Blind Count Session</button>
+          </div>
+          <div class="box p-0" id="counts-table-div">
+            <div class="p-3 text-muted">No active count session. Click "Start New Blind Count Session" to generate a physical count sheet.</div>
+          </div>
+        </div>
+
+        <!-- GLOBAL SEARCH BAR -->
+        <div class="d-flex justify-content-end mb-3">
+            <div class="input-group shadow-sm" style="max-width: 350px;">
+                <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                <input type="text" id="global-search-bar" class="form-control" placeholder="Search records in this section...">
+            </div>
+        </div>
+
+        <!-- HOME DASHBOARD SECTION -->
+        <div id="section-home" class="tab-section">
+
+          <div class="box mt-3">
+            <h6 class="fw-bold text-uppercase border-bottom pb-2 text-warning"><i class="fas fa-clock me-1"></i> Near-Expiry Alerts (30/60 Days)</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th>Lot Number</th>
+                    <th class="text-center">Expiry Date</th>
+                    <th class="text-center">Remaining Qty</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="home-expiry-alerts-body">
+                  <tr><td colspan="6" class="text-center text-muted">Loading expiry data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
+            <h4 class="fw-bold m-0 text-uppercase">Dashboard Overview</h4>
+            <select id="dashboard-date-filter" class="form-select w-auto fw-bold border-dark">
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+          
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card shadow-sm border-0 border-start border-primary border-4 h-100 kpi-card">
+                <div class="card-body">
+                  <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-wallet text-primary me-2"></i>Revenue
+                  </h6>
+                  <h4 id="kpi-revenue" class="mb-0 mt-2 fw-bold text-primary">₱ 0.00</h4>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card shadow-sm border-0 border-start border-success border-4 h-100 kpi-card">
+                <div class="card-body">
+                  <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-file-invoice text-success me-2"></i>Invoices
+                  </h6>
+                  <h4 id="kpi-invoices" class="mb-0 mt-2 fw-bold text-success">0</h4>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card shadow-sm border-0 border-start border-warning border-4 h-100 kpi-card clickable" onclick="document.getElementById('nav-po').click()">
+                <div class="card-body">
+                  <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-clock text-warning me-2"></i>Pending POs
+                  </h6>
+                  <h4 id="kpi-pending-pos" class="mb-0 mt-2 fw-bold text-warning">0</h4>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card shadow-sm border-0 border-start border-danger border-4 h-100 kpi-card clickable" onclick="document.getElementById('nav-products').click()">
+                <div class="card-body">
+                  <h6 class="text-muted text-uppercase mb-2" style="font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>Low Stock Alerts
+                  </h6>
+                  <h4 id="kpi-low-stock" class="mb-0 mt-2 fw-bold text-danger">0</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-8">
+              <div class="box h-100">
+                <h6 class="fw-bold text-uppercase border-bottom pb-2">Sales Trend</h6>
+                <canvas id="salesTrendChart" style="max-height: 300px;"></canvas>
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <div class="box h-100">
+                <h6 class="fw-bold text-uppercase border-bottom pb-2">🕒 Recent Activity</h6>
+                <ul class="list-group list-group-flush" id="home-recent-activity" style="max-height: 280px; overflow-y: auto;">
+                  <li class="list-group-item text-muted py-3 text-center">Loading recent activity...</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Low Stock Table supporting Reorder Threshold & Auto-Suggested Quantity (#6) -->
+          <div class="box mt-3">
+            <h6 class="fw-bold text-uppercase border-bottom pb-2 text-danger"><i class="fas fa-exclamation-circle me-1"></i> Reorder Point & Low Stock Warnings</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th class="text-center">Current Qty</th>
+                    <th class="text-center">Reorder Threshold</th>
+                    <th class="text-center">Suggested PO Qty</th>
+                    <th class="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="home-low-stock-body">
+                  <tr><td colspan="5" class="text-center text-muted">Loading stock data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- POS SECTION -->
+        <div id="section-pos" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">POS Register</h4>
+          <div class="row g-3">
+            <div class="col-lg-8">
+              <div class="box">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-7">
+                    <label class="form-label mb-1 fw-bold">Select Product / Scan Barcode</label>
+                    <select class="form-select" id="pos-product-select"></select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label mb-1 fw-bold">Quantity</label>
+                    <input type="number" class="form-control" id="pos-qty" value="1" min="1" />
+                  </div>
+                  <div class="col-md-3">
+                    <button type="button" class="btn btn-dark w-100" id="btn-add-item">Add Line</button>
+                  </div>
+                </div>
+              </div>
+              <div class="box p-0">
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered table-hover mb-0">
+                   <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th style="width:150px;">Barcode</th>
+                        <th class="text-center" style="width:80px;">Qty</th>
+                        <th class="text-end" style="width:120px;">Unit Price</th>
+                        <th class="text-end" style="width:120px;">Line Total</th>
+                        <th class="text-center" style="width:80px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pos-cart-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Invoice & Billing Configuration Panel -->
+            <div class="col-lg-4">
+              <div class="box">
+                <div class="mb-2">
+  <label class="form-label mb-1 fw-bold">Operating Store Outlet</label>
+  <select class="form-select fw-bold bg-light" id="pos-branch-select"></select>
+</div>
+                
+                <div class="mb-2">
+                  <label class="form-label mb-1 fw-bold">Invoice Ref</label>
+                  <input type="text" id="pos-invoice-num" class="form-control bg-light fw-bold" readonly />
+                </div>
+
+                <div class="mb-2 mt-2">
+                  <label class="form-label mb-1 fw-bold">Customer Account (AR)</label>
+                  <div class="input-group">
+                    <select class="form-select" id="pos-customer-select">
+                      <option value="0">Walk-in (No Account)</option>
+                    </select>
+                    <button type="button" class="btn btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#customerModal">+</button>
+                  </div>
+                </div>
+
+                <div class="form-check mb-3 mt-2 border p-2 bg-light">
+                  <input class="form-check-input ms-1" type="checkbox" id="pos-charge-ar">
+                  <label class="form-check-label fw-bold text-danger ms-2" for="pos-charge-ar">
+                    Charge to Account (AR)
+                  </label>
+                </div>
+
+                <h6 class="fw-bold border-bottom pb-1 mt-3 mb-2 text-uppercase" style="font-size: 0.8rem;">Senior / PWD Discount Calculation</h6>
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="form-label mb-1 fw-bold" style="font-size: 0.75rem;">Total Pax</label>
+                    <input type="number" class="form-control" id="pos-total-pax" value="1" min="1" />
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label mb-1 fw-bold" style="font-size: 0.75rem;">Senior/PWD Pax</label>
+                    <input type="number" class="form-control" id="pos-discount-pax" value="0" min="0" />
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-between mb-1 mt-3">
+                  <span>Gross Total</span>
+                  <span id="pos-gross-total">₱ 0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1 text-danger">
+                  <span>Discount (20% per Senior/PWD)</span>
+                  <span id="pos-discount-display">- ₱ 0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                  <span>Net Subtotal</span>
+                  <span id="pos-subtotal">₱ 0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                  <span>Tax (12% VAT)</span>
+                  <span id="pos-tax">₱ 0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-baseline mb-3">
+                  <span class="fw-bold">Payable Amount</span>
+                  <h4 id="pos-total-display" class="fw-bold m-0">₱ 0.00</h4>
+                </div>
+                <button type="button" class="btn btn-dark w-100 fw-bold" id="btn-save-pos">Complete Sale</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCOUNTS RECEIVABLE SECTION -->
+        <div id="section-ar" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Accounts Receivable Ledger</h4>
+          <div class="box p-0" id="ar-table-div">
+            <div class="p-3 text-muted">Loading receivables...</div>
+          </div>
+        </div>
+
+        <!-- PURCHASE ORDERS SECTION -->
+        <div id="section-po" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Purchase Orders & Inbound Receiving</h4>
+          
+          <!-- MULTI-ITEM PO DRAFT BUILDER -->
+          <div class="box">
+            <h6 class="fw-bold text-uppercase border-bottom pb-2"><i class="fas fa-file-invoice me-2"></i>Create Multi-Item Purchase Order</h6>
+            
+            <!-- Row 1: Supplier & Expected Date Selection -->
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-md-5">
+                <label class="form-label mb-1 fw-bold">1. Select Supplier <span class="text-danger">*</span></label>
+                <select class="form-select fw-bold" id="po-supplier-select">
+                  <option value="">-- Select Supplier --</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label mb-1 fw-bold">Expected Delivery Date</label>
+                <input type="date" class="form-control" id="po-expected-date" />
+              </div>
+              <div class="col-md-4 text-end align-self-end">
+                <span class="text-muted small d-block mb-1" id="po-supplier-category-info">Select a supplier to view eligible product categories.</span>
+              </div>
+            </div>
+
+            <!-- Row 2: Add Product Line Box -->
+            <div class="card bg-light border p-2 mb-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                  <label class="form-label mb-1 fw-bold">2. Select Product Line (Filtered by Supplier Category)</label>
+                  <select class="form-select" id="po-product-select">
+                    <option value="">-- Select Product --</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label mb-1 fw-bold">Qty to Order</label>
+                  <input type="number" class="form-control" id="po-qty" value="10" min="1" />
+                </div>
+                <div class="col-md-3">
+                  <button type="button" class="btn btn-outline-dark w-100 fw-bold" id="btn-add-po-item">
+                    <i class="fas fa-plus me-1"></i> Add Line Item
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- DRAFT ITEMS TABLE -->
+            <div class="table-responsive mb-3" style="max-height: 220px; overflow-y: auto;">
+              <table class="table table-sm table-bordered bg-white mb-0">
+                <thead>
+                  <tr>
+                    <th class="bg-dark text-white">Product Title / SKU</th>
+                    <th class="bg-dark text-white">Category</th>
+                    <th class="text-center bg-dark text-white" style="width: 130px;">Qty Ordered</th>
+                    <th class="text-center bg-dark text-white" style="width: 90px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="po-draft-items-body">
+                  <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No product lines added yet. Select supplier & add products above.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="fw-bold text-primary" id="po-draft-summary">Total Product Lines: 0</span>
+              <button class="btn btn-dark fw-bold px-4" id="btn-create-po">
+                <i class="fas fa-paper-plane me-1"></i> Draft Purchase Order
+              </button>
+            </div>
+          </div>
+
+          <h5 class="mt-4 fw-bold text-uppercase">Purchase Orders Status</h5>
+          <div class="box p-0" id="po-table-div">
+            <div class="p-3 text-muted">Loading purchase orders...</div>
+          </div>
+        </div>
+
+        <!-- SUPPLIER SECTION -->
+<div id="section-suppliers" class="tab-section" style="display: none;">
+  <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Supplier Section</h4>
+  <div class="box p-3">
+    <h6 class="fw-bold mb-3 text-uppercase"><i class="fas fa-truck me-2"></i>Create Supplier Account</h6>
+    
+    <!-- Row 1: Standard Form Inputs -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <label class="form-label mb-1 fw-bold">Supplier Code <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="sup-code" placeholder="e.g. SUP-101" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label mb-1 fw-bold">Company Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="sup-company" placeholder="e.g. Universal Beverages Inc." />
+      </div>
+      <div class="col-md-5">
+        <label class="form-label mb-1 fw-bold">Contact Person / Phone</label>
+        <input type="text" class="form-control" id="sup-contact" placeholder="e.g. John Doe / 09171234567" />
+      </div>
+    </div>
+
+    <!-- Row 2: Category Multi-Select & Action Button -->
+    <div class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label mb-1 fw-bold">Specialized Categories <span class="text-danger">*</span></label>
+        <select class="form-select bg-white" id="sup-categories" multiple style="height: 90px;" required>
+          <!-- Dynamically loaded -->
+        </select>
+        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
+          <i class="fas fa-info-circle me-1"></i>Hold <strong>Ctrl</strong> (Windows) or <strong>Cmd</strong> (Mac) to select multiple categories.
+        </small>
+      </div>
+      <div class="col-md-4">
+        <button type="button" class="btn btn-dark w-100 fw-bold py-2" id="btn-save-supplier" style="height: 42px;">
+          <i class="fas fa-save me-1"></i> Save Supplier Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mt-4 fw-bold text-uppercase">Registered Suppliers</h5>
+  <div class="box p-0" id="suppliers-table-div">
+    <div class="p-3 text-muted">Loading suppliers...</div>
+  </div>
+</div>
+
+        <!-- PRODUCTS SECTION SUPPORTING REORDER POINTS (#6) & UOM CONVERSIONS (#9) -->
+        <div id="section-products" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Product Catalog</h4>
+          <div class="box">
+            <div class="row g-2">
+              <div class="col-md-3"><input type="text" class="form-control" id="sku" placeholder="SKU Code *" /></div>
+              <div class="col-md-3"><input type="text" class="form-control" id="product-name" placeholder="Product Title *" /></div>
+              <div class="col-md-3"><select class="form-select" id="category-select"><option value="0">Category...</option></select></div>
+              <div class="col-md-3"><input type="number" step="0.01" class="form-control" id="price" placeholder="Retail Price (₱) *" /></div>
+              <div class="col-md-3"><input type="number" step="0.01" class="form-control" id="unit-cost" placeholder="Unit Cost (₱)" /></div>
+              <div class="col-md-3"><input type="number" class="form-control" id="reorder-level" placeholder="Reorder Level (Default: 10)" value="" /></div>
+              <div class="col-md-3"><input type="number" class="form-control" id="suggested-qty" placeholder="Suggested PO Qty (Default: 50)" value="" /></div>
+              <div class="col-md-3"><input type="text" class="form-control" id="barcode" placeholder="Barcode ID" /></div>
+              <div class="col-md-3"><input type="text" class="form-control" id="uom" placeholder="Base UOM" value="Piece" /></div>
+              <div class="col-md-3"><select class="form-select" id="pack-uom-select"><option value="0">Pack UOM (e.g. Case)...</option></select></div>
+              <div class="col-md-3"><input type="number" class="form-control" id="pieces-per-pack" placeholder="Pieces per Pack / Case" value="" /></div>
+              <div class="col-md-3"><input type="number" class="form-control" id="tax-rate" placeholder="Tax (%)" value="12" /></div>
+              <div class="col-md-9 form-check mt-2 ms-2">
+                <input class="form-check-input" type="checkbox" id="track-expiry">
+                <label class="form-check-label fw-bold ms-2" for="track-expiry">Require Lot/Expiry (Food Batch Tracking)</label>
+              </div>
+              <div class="col-md-3 mt-2"><button type="button" class="btn btn-dark w-100 fw-bold" id="btn-save-product">Save Product</button></div>
+            </div>
+          </div>
+          <div class="box p-0" id="products-table-div"></div>
+        </div>
+
+        <!-- CATEGORIES SECTION -->
+        <div id="section-categories" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Category Master</h4>
+          <div class="box">
+            <div class="row g-2">
+              <div class="col-md-4"><input type="text" id="cat-name" class="form-control" placeholder="Category Name" /></div>
+              <div class="col-md-6"><input type="text" id="cat-desc" class="form-control" placeholder="Description" /></div>
+              <div class="col-md-2"><button id="btn-save-category" class="btn btn-dark w-100">Add Category</button></div>
+            </div>
+          </div>
+          <div class="box p-0" id="categories-table-div"></div>
+        </div>
+
+        <!-- SALES HISTORY / ANALYTICS SECTION -->
+        <div id="section-history" class="tab-section" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
+            <h4 class="fw-bold m-0 text-uppercase">Sales Analytics</h4>
+            <select id="sales-filter" class="form-select w-auto fw-bold border-dark">
+              <option value="all">All Sales</option>
+              <option value="cash">Cash Sales Only</option>
+              <option value="ar">AR / Utang Only</option>
+            </select>
+          </div>
+          
+          <div class="row mb-3 g-2">
+            <div class="col-md-4">
+              <div class="box text-center py-4">
+                <span class="text-uppercase fw-bold text-muted">Total Revenue</span>
+                <h3 id="metric-total-sales" class="mb-0 mt-2 fw-bold">₱ 0.00</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="box text-center py-4">
+                <span class="text-uppercase fw-bold text-muted">Total Invoices</span>
+                <h3 id="metric-total-invoices" class="mb-0 mt-2 fw-bold">0</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="box text-center py-4">
+                <span class="text-uppercase fw-bold text-muted">Avg Order Value</span>
+                <h3 id="metric-avg-sales" class="mb-0 mt-2 fw-bold">₱ 0.00</h3>
+              </div>
+            </div>
+          </div>
+          <div class="box p-0" id="sales-history-table-div"></div>
+        </div>
+
+        <!-- LOGS SECTION -->
+        <div id="section-logs" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">System Audit Logs</h4>
+          <div class="box p-0" id="logs-table-div"></div>
+        </div>
+
+        <!-- REPORTS & MONTHLY SHRINKAGE SECTION (#8) -->
+        <div id="section-reports" class="tab-section" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-3">
+            <div class="btn-group">
+              <button class="btn btn-dark fw-bold active" id="tab-btn-onhand">On-Hand Quantity Report</button>
+              <button class="btn btn-outline-dark fw-bold" id="tab-btn-shrinkage">Monthly Shrinkage Report</button>
+            </div>
+          </div>
+
+          <!-- On-Hand Inventory View -->
+          <div id="div-onhand-report">
+            <div class="d-flex justify-content-end mb-2">
+              <button class="btn btn-success fw-bold" id="btn-export-csv">Export On-Hand to CSV</button>
+            </div>
+            <div class="box p-0" id="reports-table-div">
+              <div class="p-3 text-muted">Loading report data...</div>
+            </div>
+          </div>
+
+          <!-- Monthly Shrinkage Report View (#8) -->
+          <div id="div-shrinkage-report" style="display: none;">
+            <div class="box bg-light border p-3 mb-3">
+              <div class="row align-items-center">
+                <div class="col-md-4">
+                  <label class="fw-bold mb-1">Select Month for Shrinkage Loss</label>
+                  <input type="month" id="report-shrinkage-month" class="form-control fw-bold border-dark">
+                </div>
+                <div class="col-md-5 text-center mt-3 mt-md-0">
+                  <span class="text-muted text-uppercase fw-bold d-block">Total Monthly Shrinkage Loss</span>
+                  <h3 id="shrinkage-grand-total" class="fw-bold text-danger m-0">₱ 0.00</h3>
+                </div>
+                <div class="col-md-3 text-end mt-3 mt-md-0">
+                  <button class="btn btn-success w-100 fw-bold" id="btn-export-shrinkage-csv">Export Shrinkage CSV</button>
+                </div>
+              </div>
+            </div>
+            <div class="box p-3" id="shrinkage-report-div">
+              <div class="text-muted">Select a month to calculate stock shrinkage financial loss.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SYSTEM ARCHIVE SECTION -->
+        <div id="section-archive" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">System Archive & Recovery</h4>
+          <div class="mb-3 btn-group">
+            <button type="button" class="btn btn-dark archive-nav-btn" id="archive-tab-products">Archived Products</button>
+            <button type="button" class="btn btn-outline-dark archive-nav-btn" id="archive-tab-categories">Archived Categories</button>
+            <button type="button" class="btn btn-outline-dark archive-nav-btn" id="archive-tab-suppliers">Archived Suppliers</button>
+          </div>
+
+          <div class="box p-0" id="archive-table-div">
+            <div class="p-3 text-muted">Loading archived items...</div>
+          </div>
+        </div>
+<!-- ... existing sections above ... -->
+
+        <!-- STOCK RELEASES & STORE TRANSFERS SECTION -->
+        <div id="section-transfers" class="tab-section" style="display: none;">
+          <h4 class="fw-bold mb-3 text-uppercase border-bottom pb-1">Stock Releases & Store Transfers</h4>
+
+          <div class="row g-3">
+            <!-- Central Warehouse to Store Dispatch Builder -->
+            <div class="col-lg-8">
+              <div class="box">
+                <h6 class="fw-bold text-uppercase border-bottom pb-2"><i class="fas fa-truck-loading me-2"></i>Create Multi-Item Stock Release Voucher</h6>
+
+                <div class="row g-2 mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label mb-1 fw-bold">1. Destination Store / Retail Outlet <span class="text-danger">*</span></label>
+                    <select class="form-select fw-bold" id="tr-destination-store"></select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label mb-1 fw-bold">Dispatch Note / Remarks</label>
+                    <input type="text" class="form-control" id="tr-note" placeholder="e.g. Weekly store stock replenishment" />
+                  </div>
+                </div>
+
+                <div class="card bg-light border p-2 mb-3">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                      <label class="form-label mb-1 fw-bold">2. Select Product Line</label>
+                      <select class="form-select" id="tr-product-select"></select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label mb-1 fw-bold">Qty to Release</label>
+                      <input type="number" class="form-control" id="tr-qty" value="10" min="1" />
+                    </div>
+                    <div class="col-md-3">
+                      <button type="button" class="btn btn-outline-dark w-100 fw-bold" id="btn-add-release-item">
+                        <i class="fas fa-plus me-1"></i> Add Item
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="table-responsive mb-3" style="max-height: 180px; overflow-y: auto;">
+                  <table class="table table-sm table-bordered bg-white mb-0">
+                    <thead>
+                      <tr>
+                        <th class="bg-dark text-white">Product Name / SKU</th>
+                        <th class="text-center bg-dark text-white" style="width: 140px;">Qty Released</th>
+                        <th class="text-center bg-dark text-white" style="width: 90px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tr-draft-items-body">
+                      <tr><td colspan="3" class="text-center text-muted py-3">No product lines added. Select products above to draft dispatch.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-primary" id="tr-draft-summary">Total Items: 0</span>
+                  <button class="btn btn-dark fw-bold px-4" id="btn-create-release">
+                    <i class="fas fa-paper-plane me-1"></i> Draft Release Voucher
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 1 Store Return Panel -->
+            <div class="col-lg-4">
+              <div class="box bg-light border">
+                <h6 class="fw-bold text-uppercase border-bottom pb-2 text-danger"><i class="fas fa-undo me-1"></i> Step 1: Store Return to Warehouse</h6>
+                <small class="text-muted d-block mb-3">Returns damaged stock from store directly into Warehouse Non-Sellable bucket.</small>
+
+                <div class="mb-2">
+                  <label class="form-label fw-bold mb-1">Origin Store *</label>
+                  <select class="form-select" id="sr-store-select"></select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-bold mb-1">Select Damaged Product *</label>
+                  <select class="form-select" id="sr-product-select"></select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-bold mb-1">Return Quantity *</label>
+                  <input type="number" class="form-control" id="sr-qty" placeholder="Units" min="1" />
+                </div>
+                <div class="mb-2">
+                  <label class="form-label fw-bold mb-1">Damage Reason</label>
+                  <select class="form-select" id="sr-reason-select">
+                    <option value="1">Damaged Goods</option>
+                    <option value="2">Expired / Past Expiry</option>
+                    <option value="4">Defective Packaging</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold mb-1">Note / Reference</label>
+                  <input type="text" class="form-control" id="sr-note" placeholder="Optional notes" />
+                </div>
+                <button type="button" class="btn btn-danger w-100 fw-bold" id="btn-submit-store-return">
+                  Submit Store Return
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <h5 class="mt-4 fw-bold text-uppercase">Stock Release Vouchers Status</h5>
+          <div class="box p-0" id="transfers-table-div">
+            <div class="p-3 text-muted">Loading transfer vouchers...</div>
+          </div>
+        </div>
+
+      </main> <!-- Close main here -->
+    </div>
+    <!-- Edit Product Modal (#6 & #9) -->
+    <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold">Edit Product Catalog Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="edit-prod-id" />
+            <div class="row g-2">
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">SKU</label>
+                <input type="text" id="edit-prod-sku" class="form-control" />
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">Barcode</label>
+                <input type="text" id="edit-prod-barcode" class="form-control" />
+              </div>
+              <div class="col-md-12 mb-2">
+                <label class="form-label fw-bold mb-1">Product Name</label>
+                <input type="text" id="edit-prod-name" class="form-control" />
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">Category</label>
+                <select id="edit-prod-category" class="form-select"></select>
+              </div>
+              <div class="col-md-3 mb-2">
+                <label class="form-label fw-bold mb-1">Retail Price (₱)</label>
+                <input type="number" step="0.01" id="edit-prod-price" class="form-control" />
+              </div>
+              <div class="col-md-3 mb-2">
+                <label class="form-label fw-bold mb-1">Unit Cost (₱)</label>
+                <input type="number" step="0.01" id="edit-prod-cost" class="form-control" />
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">Reorder Level Threshold</label>
+                <input type="number" id="edit-prod-reorder" class="form-control" />
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">Suggested Reorder Qty</label>
+                <input type="number" id="edit-prod-suggested" class="form-control" />
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label fw-bold mb-1">Base UOM</label>
+                <input type="text" id="edit-prod-uom" class="form-control" />
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label fw-bold mb-1">Pack UOM (Conversion)</label>
+                <select id="edit-prod-pack-uom" class="form-select"></select>
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label fw-bold mb-1">Pieces per Pack/Case</label>
+                <input type="number" id="edit-prod-pieces-per-pack" class="form-control" />
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label fw-bold mb-1">Tax Rate (%)</label>
+                <input type="number" id="edit-prod-tax" class="form-control" />
+              </div>
+              <div class="col-md-6 form-check mt-4 ms-2">
+                <input class="form-check-input" type="checkbox" id="edit-track-expiry">
+                <label class="form-check-label fw-bold ms-2" for="edit-track-expiry">Require Lot/Expiry (Food)</label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark" id="btn-update-product">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Registration Modal -->
+    <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold text-uppercase">Add AR Customer Account</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Company / Customer Name *</label>
+              <input type="text" id="cust-name" class="form-control" placeholder="Acme Corp / John Doe" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">TIN (Tax Identification Number) *</label>
+              <input type="text" id="cust-tin" class="form-control" placeholder="000-000-000-000" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Contact Number</label>
+              <input type="text" id="cust-contact" class="form-control" placeholder="0917XXXXXXX" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Email Address</label>
+              <input type="email" id="cust-email" class="form-control" placeholder="billing@acme.com" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-dark w-100" id="btn-save-customer">Register Customer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Receive Stock Modal -->
+    <div class="modal fade" id="receiveStockModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title fw-bold">Inbound Bulk Goods Receipt - PO <span id="receivePoNumber"></span></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Delivery Receipt / Invoice #</label>
+                <input type="text" id="receiveDrNumber" class="form-control" placeholder="e.g. DR-99012">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Note / Receiving Remarks</label>
+                <input type="text" id="receiveNote" class="form-control" placeholder="Optional delivery notes">
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-bold text-uppercase" style="font-size: 0.85rem;"><i class="fas fa-boxes me-1"></i> Order Line Items</span>
+              <button type="button" class="btn btn-sm btn-outline-dark fw-bold" id="btn-receive-all-lines">
+                <i class="fas fa-check-double me-1"></i> Receive All Full Quantities
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle mb-0" style="font-size:0.85rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th>Product</th>
+                    <th class="text-center" style="width: 80px;">Ordered</th>
+                    <th class="text-center" style="width: 80px;">Received</th>
+                    <th class="text-center text-primary" style="width: 90px;">Balance</th>
+                    <th style="width: 280px;">Receive Now (Qty, Lot #, Expiry)</th>
+                    <th class="text-center" style="width: 70px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="receivePoItemsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark fw-bold" id="btnConfirmReceive">
+              <i class="fas fa-download me-1"></i> Process Bulk Receipt
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock Return Modal -->
+    <div class="modal fade" id="stockReturnModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Stock Return (To Warehouse)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2 fw-bold text-primary" id="srProductInfo"></div>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label>Sellable Stock</label><input type="text" id="srCurrentSellable" class="form-control bg-light" readonly></div>
+              <div class="col-6"><label>Non-Sellable Stock</label><input type="text" id="srCurrentNonSellable" class="form-control bg-light" readonly></div>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Return Quantity *</label>
+              <input type="number" id="srReturnQty" class="form-control" min="1">
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Reason *</label>
+              <select id="srReasonSelect" class="form-select"></select>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Note</label>
+              <textarea id="srNote" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark" id="btnConfirmStockReturn">Return</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Quantity Adjustment Modal -->
+    <div class="modal fade" id="unifiedAdjustmentModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Adjust Inventory Quantity</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2 border p-2 bg-light text-danger" id="adjManagerApprovalDiv" style="display: none;">
+              <label class="fw-bold mb-1"><i class="fas fa-lock me-1"></i> Admin / Manager Passcode Required (&ge; 10 pcs change)</label>
+              <input type="password" id="adjApprovedBy" class="form-control border-danger" placeholder="Enter Admin or Manager Passcode" autocomplete="new-password">
+            </div>
+            <div class="mb-2 fw-bold text-primary" id="adjProductInfo"></div>
+            <div class="row g-2 mb-3">
+              <div class="col-6"><label>Current Sellable</label><input type="text" id="adjCurrentStock" class="form-control bg-light" readonly></div>
+              <div class="col-6"><label>Calculated New Stock</label><input type="text" id="adjCalculatedTotal" class="form-control bg-light fw-bold" readonly></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Adjustment Mode</label>
+              <div class="btn-group w-100">
+                <input type="radio" class="btn-check" name="adjMode" id="adjModeCount" value="count" checked>
+                <label class="btn btn-outline-dark" for="adjModeCount">Physical Count</label>
+                <input type="radio" class="btn-check" name="adjMode" id="adjModeDelta" value="delta">
+                <label class="btn btn-outline-dark" for="adjModeDelta">+/- Adjustment</label>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Input Value *</label>
+              <input type="number" id="adjValueInput" class="form-control">
+              <span id="adjDeltaBadge" class="badge bg-secondary mt-1">0</span>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Reason *</label>
+              <select id="adjReasonSelect" class="form-select"></select>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Note</label>
+              <textarea id="adjNote" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark" id="btnConfirmAdjustment">Save Adjustment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchase Return Modal -->
+    <div class="modal fade" id="purchaseReturnModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Purchase Return - PO <span id="prPoNumber"></span></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="prFromNonSellable" value="1">
+              <label class="form-check-label text-danger fw-bold" for="prFromNonSellable">
+                  Return from Non-Sellable (Damaged) Stock
+              </label>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Reason *</label>
+                <select id="prReasonSelect" class="form-select"></select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Note</label>
+                <input type="text" id="prNote" class="form-control" placeholder="Required for certain reasons">
+              </div>
+            </div>
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Received</th>
+                  <th>Returned</th>
+                  <th>Returnable</th>
+                  <th width="140">Return Qty</th>
+                  <th width="100" class="text-center">Replace?</th>
+                </tr>
+              </thead>
+              <tbody id="prPoItemsBody"></tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark" id="btnConfirmPurchaseReturn">Return</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cancel / Close PO Modal -->
+    <div class="modal fade" id="cancelPoModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-danger fw-bold">Cancel Purchase Order</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to cancel PO <span id="cancelPoNumber" class="fw-bold"></span>?</p>
+            <div class="mb-2">
+              <label class="fw-bold">Reason for Cancellation *</label>
+              <select id="cancelReasonSelect" class="form-select">
+                <option value="">-- Select Reason --</option>
+                <option value="Duplicate Order">Duplicate Order</option>
+                <option value="Incorrect Order Details">Incorrect Order Details</option>
+                <option value="Supplier Availability / Stock Out">Supplier Availability / Stock Out</option>
+                <option value="Delivery Delay">Delivery Delay</option>
+                <option value="Issued in Error">Issued in Error</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold">Note / Remarks</label>
+              <textarea id="cancelNote" class="form-control" rows="2" placeholder="Provide additional details if needed..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep PO</button>
+            <button type="button" class="btn btn-danger" id="btnConfirmCancelPo">Confirm Cancellation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dispose Product Modal -->
+    <div class="modal fade" id="disposeModal" tabindex="-1" aria-labelledby="disposeModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="disposeModalLabel">Dispose Damaged Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Product:</strong> <span id="disposeProductInfo"></span></p>
+                    <div class="mb-3">
+                        <label class="form-label">Available to Dispose (Non-Sellable)</label>
+                        <input type="number" class="form-control" id="disposeMaxQty" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantity to Dispose <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="disposeQty" min="1" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reason <span class="text-danger">*</span></label>
+                        <select class="form-select" id="disposeReasonSelect"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note / Reference</label>
+                        <textarea class="form-control" id="disposeNote" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" id="btnConfirmDispose">Confirm Disposal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Return to Supplier (RTV) Modal -->
+    <div class="modal fade" id="rtvSupplierModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title fw-bold">Process Damaged / Return Stock</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p><strong>Product:</strong> <span id="rtvProductName" class="fw-bold"></span></p>
+
+            <div class="form-check mb-3 border p-2 bg-light">
+              <input class="form-check-input ms-1" type="checkbox" id="rtvFromNonSellable" checked>
+              <label class="form-check-label fw-bold text-danger ms-2" for="rtvFromNonSellable">
+                Return to Vendor (RTV) / Create PO
+              </label>
+              <small class="d-block text-muted ms-2 mt-1" style="font-size: 0.75rem;">If unchecked, stock will just be transferred from Sellable to Non-Sellable.</small>
+            </div>
+            
+            <div class="mb-2" id="rtvSupplierDiv">
+              <label class="fw-bold mb-1">Select Supplier *</label>
+              <select id="rtvSupplierSelect" class="form-select"></select>
+            </div>
+
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label mb-1">Sellable Available</label>
+                <input type="text" id="rtvSellableQty" class="form-control bg-light" readonly>
+              </div>
+              <div class="col-6">
+                <label class="form-label mb-1">Non-Sellable Available</label>
+                <input type="text" id="rtvNonSellableQty" class="form-control bg-light text-danger fw-bold" readonly>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Quantity *</label>
+              <input type="number" id="rtvQty" class="form-control" min="1" step="0.01">
+            </div>
+            
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Reason *</label>
+              <select id="rtvReasonSelect" class="form-select"></select>
+            </div>
+
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Note / Reference</label>
+              <textarea id="rtvNote" class="form-control" rows="2" placeholder="Reason or RM Ref #"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="btnConfirmRtvSupplier">Process Return & Draft PO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Category Modal -->
+    <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold">Edit Category</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="edit-cat-id" />
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Category Name</label>
+              <input type="text" id="edit-cat-name" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Description</label>
+              <input type="text" id="edit-cat-desc" class="form-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark" id="btn-update-category">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Supplier Modal -->
+    <div class="modal fade" id="editSupplierModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold">Edit Supplier Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="edit-sup-id" />
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-bold mb-1">Supplier Code <span class="text-danger">*</span></label>
+                <input type="text" id="edit-sup-code" class="form-control" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold mb-1">Company Name <span class="text-danger">*</span></label>
+                <input type="text" id="edit-sup-company" class="form-control" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold mb-1">Contact Person / Phone</label>
+                <input type="text" id="edit-sup-contact" class="form-control" />
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Specialized Categories <span class="text-danger">*</span></label>
+              <select id="edit-sup-categories" class="form-select bg-white" multiple style="height: 100px;">
+                <!-- Dynamically loaded -->
+              </select>
+              <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
+                <i class="fas fa-info-circle me-1"></i>Hold <strong>Ctrl</strong> or <strong>Cmd</strong> to select multiple categories.
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark fw-bold" id="btn-update-supplier">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Return Claim Status & Photo Proof Modal -->
+    <div class="modal fade" id="claimStatusModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title fw-bold">Update Return Claim Status & Photo Proof</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="claimPrId">
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Claim Status</label>
+              <select id="claimStatusSelect" class="form-select">
+                <option value="Created">Created</option>
+                <option value="Picked Up">Picked Up</option>
+                <option value="Credited">Credited</option>
+                <option value="Replaced">Replaced</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Credit Note Number</label>
+              <input type="text" id="claimCreditNote" class="form-control" placeholder="CN-10029">
+            </div>
+            <div class="mb-2">
+              <label class="fw-bold mb-1">Upload Return Photo Proof</label>
+              <input type="file" id="claimPhotoInput" class="form-control" accept="image/*">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-dark w-100 fw-bold" id="btnSaveReturnClaim">Save Claim Record</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Manager / Admin Password Authorization Modal -->
+    <div class="modal fade" id="managerAuthModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-dark text-white py-2">
+            <h6 class="modal-title fw-bold m-0"><i class="fas fa-user-shield me-2"></i>Manager Authorization</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted mb-2" id="authModalMessage" style="font-size:0.85rem;">Enter Manager or Admin password to authorize this action:</p>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Passcode / Password <span class="text-danger">*</span></label>
+              <input type="password" id="auth-password-input" class="form-control" placeholder="" autocomplete="current-password" />
+            </div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark btn-sm fw-bold" id="btn-submit-auth">Authorize</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!-- Edit Store Outlet Modal -->
+    <div class="modal fade" id="editStoreModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold">Edit Store Outlet Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="edit-store-id" />
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Store Code <span class="text-danger">*</span></label>
+              <input type="text" id="edit-store-code" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1">Store Outlet Name <span class="text-danger">*</span></label>
+              <input type="text" id="edit-store-name" class="form-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-dark fw-bold" id="btn-update-store">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standardized Corporate Return Document Modal -->
+    <div class="modal fade" id="returnDocumentModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title fw-bold"><i class="fas fa-file-invoice me-2"></i>Official Return Document</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4" id="returnDocumentPrintArea">
+            <div class="border p-4 bg-white font-monospace text-dark">
+              <!-- Standardized Corporate Header -->
+              <div class="row align-items-center border-bottom pb-3 mb-3">
+                <div class="col-8">
+                  <h3 class="fw-bold m-0 text-uppercase">APEXLOGIX ENTERPRISE</h3>
+                  <div class="small text-muted">Warehouse & Retail Logistics Operations</div>
+                  <div class="small text-muted">Central Supply HQ | Official Inventory System</div>
+                </div>
+                <div class="col-4 text-end">
+                  <span class="badge bg-dark text-white fs-6 px-3 py-2 text-uppercase d-inline-block mb-1" id="docTypeBadge">RETURN SLIP</span>
+                  <div class="fw-bold text-danger fs-6" id="docTrackingNo">REF: #00000</div>
+                </div>
+              </div>
+
+              <!-- Metadata Grid -->
+              <div class="row mb-4 bg-light p-3 border">
+                <div class="col-6">
+                  <div class="small text-muted text-uppercase fw-bold">Target Entity Details</div>
+                  <div class="fw-bold fs-6 text-primary" id="docEntityName">Store Outlet / Supplier Name</div>
+                  <div class="small text-muted" id="docEntityCode">Code: N/A</div>
+                </div>
+                <div class="col-6 text-end">
+                  <div class="small text-muted text-uppercase fw-bold">Document Metadata</div>
+                  <div><strong>Date:</strong> <span id="docDate">2026-10-28</span></div>
+                  <div><strong>Status:</strong> <span id="docStatus" class="fw-bold text-success">COMPLETED</span></div>
+                  <div><strong>Reason Log:</strong> <span id="docReason">Damaged / Defective Goods</span></div>
+                </div>
+              </div>
+
+              <!-- Itemized Table -->
+              <div class="table-responsive mb-4">
+                <table class="table table-bordered table-sm align-middle">
+                  <thead class="table-secondary text-uppercase small">
+                    <tr>
+                      <th>#</th>
+                      <th>SKU / Code</th>
+                      <th>Product Title</th>
+                      <th class="text-center">Qty</th>
+                      <th class="text-end">Unit Cost</th>
+                      <th class="text-end">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="docItemsTableBody" class="small"></tbody>
+                  <tfoot class="fw-bold bg-light">
+                    <tr>
+                      <td colspan="3" class="text-end text-uppercase">Total Returned Quantity & Value:</td>
+                      <td class="text-center text-primary" id="docTotalQty">0</td>
+                      <td class="text-end" colspan="2" id="docTotalValue">₱ 0.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- Remarks / Notes -->
+              <div class="mb-4 border p-2 bg-light small">
+                <strong>Remarks / Notes:</strong> <span id="docRemarks">N/A</span>
+              </div>
+
+              <!-- Authorization Signature Lines -->
+              <div class="row pt-4 text-center small mt-4 border-top">
+                <div class="col-4">
+                  <div class="border-bottom pb-4 mb-1"></div>
+                  <div class="fw-bold text-uppercase">Prepared By</div>
+                  <div class="text-muted" style="font-size:0.75rem;">Logistics Staff</div>
+                </div>
+                <div class="col-4">
+                  <div class="border-bottom pb-4 mb-1"></div>
+                  <div class="fw-bold text-uppercase">Checked / Inspected By</div>
+                  <div class="text-muted" style="font-size:0.75rem;">Quality Inspector</div>
+                </div>
+                <div class="col-4">
+                  <div class="border-bottom pb-4 mb-1"></div>
+                  <div class="fw-bold text-uppercase">Authorized Signature</div>
+                  <div class="text-muted" style="font-size:0.75rem;">Warehouse Manager</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-dark fw-bold" onclick="window.printReturnDocument()"><i class="fas fa-print me-1"></i> Print Official Document</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
